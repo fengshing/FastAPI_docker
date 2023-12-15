@@ -23,5 +23,3 @@ def get_db():
         yield db
     finally:
         db.close()
-
-# , connect_args={"check_same_thread": False}

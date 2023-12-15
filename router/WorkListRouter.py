@@ -58,3 +58,8 @@ def get_worklist_by_school(school: str = "", db: Session = Depends(get_db)):
 def get_worklist_by_school_and_semester(school: str, semester: str, db: Session = Depends(get_db)):
     return db_worklist.get_worklist_by_school_and_semester(school, semester, db)
 # 優化UX，製作先選好學校再選學期的端口，然後使用者看到的路徑會如：/ver1203/worklist/ntue/112-2 這類
+
+@router.get('/id', response_model=WorkListResponseSchema)
+def get_woklist_by_id(id: int = 1, db: Session = Depends(get_db)): #起始默認id為1。
+    return db_worklist.get_worklist_by_id(id, db)
+# 當端點({prefix}/id)被訪問時，將會調用get...id的指令來檢索資料庫所有的worklist紀錄，如果沒有找到任何一筆，則回傳404。

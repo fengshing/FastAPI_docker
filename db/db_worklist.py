@@ -57,7 +57,6 @@ def get_all(db: Session):
     if not worklist:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f'worklist not found')
-    # return worklist #舊版
     return [WorkListResponseSchema.from_orm(item) for item in worklist]
 
 # 從資料庫中讀取特定學期的worklist記錄。如果沒有找到符合指定學期的紀錄，會引發HTTP 404異常，否則返回這些紀錄。
@@ -67,7 +66,6 @@ def get_worklist_by_semester(semester: str, db: Session):
     if not worklist:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f'worklist with semester = {semester} not found')
-    #return worklist #舊版
     return [WorkListResponseSchema.from_orm(item) for item in worklist]
 
 # 從資料庫中讀取特定學校的worklist記錄。如果沒有找到符合指定學校的紀錄，會引發HTTP 404異常，否則返回這些紀錄。
@@ -77,26 +75,31 @@ def get_worklist_by_school(school: str, db: Session):
     if not worklist:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f'worklist with school = {school} not found')
-    #return worklist #舊版
     return [WorkListResponseSchema.from_orm(item) for item in worklist]
 
-# 優化UX，製作一個先學校後學期的模式
+# 優化UX，製作一個先學校後學期的模式；先保留，自創代碼不確定用不用得上
 def get_worklist_by_school_and_semester(school: str, semester: str, db: Session):
     worklist = db.query(DbWorklist).filter(DbWorklist.school == school, DbWorklist.semester == semester).all()
     if not worklist:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f'worklist for school {school} and semester {semester} not found')
-    #return worklist #舊版
     return [WorkListResponseSchema.from_orm(item) for item in worklist]
 
 
-# 優化資料空值的處理，還有將資料轉換成列表
+# 優化資料空值的處理，還有將資料轉換成列表；先保留，老師代碼裡刪掉了
 def str2List(worklist_records: list):
     for record in worklist_records:
-        if record.skill:  # 確保 skill 字段不是空的
-            # 將 skill 字串轉換回列表
+        if record.skill:  
             record.skill = ast.literal_eval(record.skill)
-        if record.name:  # 確保 name 字段不是空的
-            # 將 name 字串轉換回列表
+        if record.name:  
             record.name = ast.literal_eval(record.name)
     return worklist_records
+
+# 從資料庫中讀取特定id的worklist記錄。如果沒有找到符合指定id的紀錄，會引發HTTP 404異常，否則返回這些紀錄。 
+def get_worklist_by_id(id: int, db: Session):
+    # first() 方法則從查詢結果中返回第一個匹配的記錄，或在沒有匹配時返回 None。
+    homework = db.query(DbWorklist).filter(DbWorklist.id == id).first()
+    if not homework:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f'Homework with id = {id} not found')
+    return WorkListResponseSchema.from_orm(homework)
