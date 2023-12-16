@@ -21,14 +21,6 @@ stream_handler = logging.StreamHandler() #創建一個流處理器，將日誌�
 logger.addHandler(stream_handler) #確保所有訊息都會通過此處理器輸出
 
 
-# prefix的功用是創建路徑，好比prefix='/worklist'代表https:.../worklist
-
-# @router.post('')
-# def create_work(request, db: Session = Depends(get_db)):
-#     return db_worklist.create(db, request)
-# 當端點(上方prefix)被訪問時，將會調用db_creat的指令來建構一個新的worklist紀錄。
-# 後續如果用戶有想進行post動作，這在頁面就會觸發create的功能
-
 #將上面寫法導入schemas後，做一個編修與更動，以下直接替換
 @router.post('', response_model=WorkListResponseSchema)
 def create_work(request: WorkListRequestSchema, db: Session = Depends(get_db)):

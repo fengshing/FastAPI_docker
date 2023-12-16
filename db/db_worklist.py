@@ -1,7 +1,7 @@
 # 1203新增 用來宣告如何讀寫表格資料的文件
 from fastapi import HTTPException, status
 from sqlalchemy.orm.session import Session
-from .models import DbWorklist
+from .models import DbWorklist 
 from .OneTableWorkList import WorkList
 #ast，一種py的內建模塊。這在處理從資料庫或其他來源獲取的數據時非常有用，特別是當這些數據以非標準格式存儲時。例如，將字符串形式的列表 "[1, 2, 3]" 轉換為真正的列表 [1, 2, 3]。
 import ast
@@ -13,7 +13,7 @@ from router.schemas import WorkListResponseSchema, WorkListRequestSchema
 
 # 初始化資料庫。從預先定義的資料集合（OneTableWorkList中的WorkList）中讀取資料，並將這些資料寫入到DbWorklist模型對應的資料庫表中。先清空表中現有資料，再添加新資料。
 def db_feed(db: Session):
-    new_WorkList = [DbWorklist(
+    new_workList_list = [DbWorklist(
         school=worklist["school"],
         semester=worklist["semester"],
         workName=worklist["workName"],
@@ -26,15 +26,12 @@ def db_feed(db: Session):
     ) for worklist in WorkList]
     db.query(DbWorklist).delete()
     db.commit()
-    db.add_all(new_WorkList)
+    db.add_all(new_workList_list)
     db.commit()
     db_items = db.query(DbWorklist).all()
-    # return db_items # 在沒有schemas運轉前
     return [WorkListResponseSchema.from_orm(item) for item in db_items] #套入schemas響應，每個項目都做感應與響應
 
-# 創建新的資料庫記錄。根據從外部請求接收到的資料，創建一個新的DbWorklist記錄並將其添加到資料庫中。
-# def create(db: Session, request): # 在沒有schemas運轉前
-def create(db: Session, request: WorkListRequestSchema)-> WorkListResponseSchema: #這邊定義有助於明確函數的輸入和輸出。
+def create(db: Session, request: WorkListRequestSchema):
     new_worklist = DbWorklist(
         school=request.school,
         semester=request.semester,
@@ -78,12 +75,12 @@ def get_worklist_by_school(school: str, db: Session):
     return [WorkListResponseSchema.from_orm(item) for item in worklist]
 
 # 優化UX，製作一個先學校後學期的模式；先保留，自創代碼不確定用不用得上
-def get_worklist_by_school_and_semester(school: str, semester: str, db: Session):
-    worklist = db.query(DbWorklist).filter(DbWorklist.school == school, DbWorklist.semester == semester).all()
-    if not worklist:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail=f'worklist for school {school} and semester {semester} not found')
-    return [WorkListResponseSchema.from_orm(item) for item in worklist]
+#def get_worklist_by_school_and_semester(school: str, semester: str, db: Session):
+#    worklist = db.query(DbWorklist).filter(DbWorklist.school == school, DbWorklist.semester == semester).all()
+#    if not worklist:
+#        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+#                            detail=f'worklist for school {school} and semester {semester} not found')
+#    return [WorkListResponseSchema.from_orm(item) for item in worklist]
 
 
 # 優化資料空值的處理，還有將資料轉換成列表；先保留，老師代碼裡刪掉了
