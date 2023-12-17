@@ -1,37 +1,81 @@
 # 1203新增 用來宣告如何讀寫表格資料的文件
 from fastapi import HTTPException, status
+import ast
+from router.schemas import WorkListResponseSchema, WorkListRequestSchema
+#Session是ORM映射的關鍵。透過它我們才有機會繞過SQL語法，應用python指令做數據的調閱、修改、刪除。
 from sqlalchemy.orm.session import Session
 from .models import DbWorklist 
 from .OneTableWorkList import WorkList
-#ast，一種py的內建模塊。這在處理從資料庫或其他來源獲取的數據時非常有用，特別是當這些數據以非標準格式存儲時。例如，將字符串形式的列表 "[1, 2, 3]" 轉換為真正的列表 [1, 2, 3]。
-import ast
-#有了schemas後，導入使用做資料響應
-from router.schemas import WorkListResponseSchema, WorkListRequestSchema
+#引入老師的建議，透過模塊來允許py執行原始SQL語法，拿來重置id
+from sqlalchemy.sql import text
+#引入選取模塊，處理特定名詞或多條件的篩選。select用來創建SQL查詢，or_是創建邏輯「或」
+from sqlalchemy import select, or_
 
 
-# 以下的值與命名邏輯需要參照database.py以及models.py才行。
+# 1216引入，先處理技能命名格式化的議題
+def normalize_skills(skills):
+    skill_mapping = {
+        'js': 'JavaScript',
+        'JS': 'JavaScript',
+        # ... 其他技能映射 ...
+    }
+    return [skill_mapping.get(skill.lower(), skill) for skill in skills]
 
-# 初始化資料庫。從預先定義的資料集合（OneTableWorkList中的WorkList）中讀取資料，並將這些資料寫入到DbWorklist模型對應的資料庫表中。先清空表中現有資料，再添加新資料。
+
+# feed的功能是把Dbworklist清空重來，然後檢索Dbworlist後套入schemas做轉換與響應
+# def db_feed(db: Session): 
+#     new_workList_list = [DbWorklist(
+#         school=worklist["school"],
+#         semester=worklist["semester"],
+#         workName=worklist["workName"],
+#         githubUrl=worklist["githubUrl"],
+#         websiteUrl=worklist["websiteUrl"],
+#         pptUrl=worklist["pptUrl"],
+#         imgUrl=worklist["imgUrl"],
+#         skill=worklist["skill"],
+#         name=worklist["name"]
+#     ) for worklist in WorkList]
+#     db.query(DbWorklist).delete()
+#     db.commit()
+#     db.execute(text("ALTER SEQUENCE worklist_id_seq RESTART WITH 1;"))
+#     db.commit()
+#     db.add_all(new_workList_list)
+#     db.commit()
+#     db_items = db.query(DbWorklist).all()
+#     return [WorkListResponseSchema.from_orm(item) for item in db_items] 
+
+
+# 測試中
 def db_feed(db: Session):
-    new_workList_list = [DbWorklist(
-        school=worklist["school"],
-        semester=worklist["semester"],
-        workName=worklist["workName"],
-        githubUrl=worklist["githubUrl"],
-        websiteUrl=worklist["websiteUrl"],
-        pptUrl=worklist["pptUrl"],
-        imgUrl=worklist["imgUrl"],
-        skill=worklist["skill"],
-        name=worklist["name"]
-    ) for worklist in WorkList]
+    new_workList_list = []
+    for worklist in WorkList:
+        # 將技能格式化
+        formatted_skills = normalize_skills(worklist["skill"])
+        new_worklist = DbWorklist(
+            school=worklist["school"],
+            semester=worklist["semester"],
+            workName=worklist["workName"],
+            githubUrl=worklist["githubUrl"],
+            websiteUrl=worklist["websiteUrl"],
+            pptUrl=worklist["pptUrl"],
+            imgUrl=worklist["imgUrl"],
+            skill=formatted_skills,  # 使用格式化後的技能
+            name=worklist["name"]
+        )
+        new_workList_list.append(new_worklist)
     db.query(DbWorklist).delete()
+    db.commit()
+    db.execute(text("ALTER SEQUENCE worklist_id_seq RESTART WITH 1;"))
     db.commit()
     db.add_all(new_workList_list)
     db.commit()
     db_items = db.query(DbWorklist).all()
-    return [WorkListResponseSchema.from_orm(item) for item in db_items] #套入schemas響應，每個項目都做感應與響應
+    return [WorkListResponseSchema.from_orm(item) for item in db_items]
 
+# create功能是請求數據庫創建新的紀錄，用來實現用戶新增單獨作品 的功能。
 def create(db: Session, request: WorkListRequestSchema):
+    #測試中
+    formatted_skills = normalize_skills(request.skill)
     new_worklist = DbWorklist(
         school=request.school,
         semester=request.semester,
@@ -40,7 +84,7 @@ def create(db: Session, request: WorkListRequestSchema):
         websiteUrl=request.websiteUrl,
         pptUrl=request.pptUrl,
         imgUrl=request.imgUrl,
-        skill=request.skill,
+        skill=formatted_skills,
         name=request.name
     )
     db.add(new_worklist)
@@ -95,8 +139,55 @@ def str2List(worklist_records: list):
 # 從資料庫中讀取特定id的worklist記錄。如果沒有找到符合指定id的紀錄，會引發HTTP 404異常，否則返回這些紀錄。 
 def get_worklist_by_id(id: int, db: Session):
     # first() 方法則從查詢結果中返回第一個匹配的記錄，或在沒有匹配時返回 None。
-    homework = db.query(DbWorklist).filter(DbWorklist.id == id).first()
-    if not homework:
+    worklist = db.query(DbWorklist).filter(DbWorklist.id == id).first()
+    if not worklist:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail=f'Homework with id = {id} not found')
-    return WorkListResponseSchema.from_orm(homework)
+                            detail=f'worklist with id = {id} not found')
+    return WorkListResponseSchema.from_orm(worklist)
+
+# 第一版，老師給的大禮包。創建特定技能搜尋的代碼。contains主要用於檢查JSON或JSONB是否包含特定數據，屬於精准匹配。
+# 但尚未做skill更動的相關套用
+def get_worklist_by_filter(filter: str, db: Session):
+    # 用於 JSONB 欄位的 contains 條件。
+    jsonb_contains_condition = or_(
+        DbWorklist.skill.contains([filter]),
+        DbWorklist.name.contains([filter])
+    )
+    # 用於 String 欄位的 like 條件。like用途是實現模糊匹配，只要filter字串裡有部分出現於欄位中，就會回傳相關結果。
+    # 應用f"%{filter}%"，可以做到模糊匹配的用途，好比搜尋abc，可能會跑出Aabc或者abc或者abcC這樣。
+    string_like_condition = or_(
+        DbWorklist.school.ilike(f"%{filter}%"),
+        DbWorklist.semester.ilike(f"%{filter}%"),
+        DbWorklist.workName.ilike(f"%{filter}%")
+    )
+    # 組合所有條件。select指令要從哪個表提取，而where指定符合使用者操作的紀錄會被選取。
+    stmt = select(DbWorklist).where(
+        or_(
+            jsonb_contains_condition,
+            string_like_condition
+        )
+    )
+    # scalars是一個結果(Result)集合，而all將其傳回列表中。
+    worklist = db.execute(stmt).scalars().all()
+    if not worklist:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f'worklist with filter = {filter} not found')
+    return [WorkListResponseSchema.from_orm(item) for item in worklist]
+
+# 第二版，根據前端簡化篩選邏輯，引入技能格式化的處理。
+def get_worklist_by_skill(skill_filter: str, db: Session):
+    # 先對技能進行格式化
+    formatted_skills = normalize_skills([skill_filter])[0]
+    # 僅針對 JSONB 欄位的技能進行篩選
+    jsonb_contains_condition = DbWorklist.skill.contains([formatted_skills])
+    # 創建查詢
+    stmt = select(DbWorklist).where(jsonb_contains_condition)
+    # 執行查詢
+    worklist = db.execute(stmt).scalars().all()
+    # 處理無結果的情況
+    if not worklist:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f'No worklist found with skill = {skill_filter}')
+    # 返回結果
+    return [WorkListResponseSchema.from_orm(item) for item in worklist]
+

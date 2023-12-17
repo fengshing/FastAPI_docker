@@ -52,6 +52,17 @@ def get_worklist_by_school_and_semester(school: str, semester: str, db: Session 
 # 優化UX，製作先選好學校再選學期的端口，然後使用者看到的路徑會如：/ver1203/worklist/ntue/112-2 這類
 
 @router.get('/id', response_model=WorkListResponseSchema)
-def get_woklist_by_id(id: int = 1, db: Session = Depends(get_db)): #起始默認id為1。
+def get_worklist_by_id(id: int = 1, db: Session = Depends(get_db)): #起始默認id為1。
     return db_worklist.get_worklist_by_id(id, db)
 # 當端點({prefix}/id)被訪問時，將會調用get...id的指令來檢索資料庫所有的worklist紀錄，如果沒有找到任何一筆，則回傳404。
+
+
+@router.get('/filter', response_model=List[WorkListResponseSchema])
+def get_worklist_by_filter(filter: str = "", db: Session = Depends(get_db)):
+    return db_worklist.get_worklist_by_filter(filter, db)
+# 1217新增，當端點({prefix}/filter)被訪問時，會根據關鍵字做一個搜尋。可套入於全域資料的搜尋機制。
+
+@router.get('/skill_filter', response_model=List[WorkListResponseSchema])
+def get_worklist_by_skill(skill_filter: str = "", db: Session = Depends(get_db)):
+    return db_worklist.get_worklist_by_filter(skill_filter, db)
+# 1217新增，當端點({prefix}/skill_filter)被訪問時，會技能關鍵字篩選做一個條件判斷。可套入前端ANTD之select樣式。
