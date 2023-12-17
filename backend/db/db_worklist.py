@@ -12,57 +12,29 @@ from sqlalchemy.sql import text
 from sqlalchemy import select, or_
 
 
-# 1216引入，先處理技能命名格式化的議題
-def normalize_skills(skills):
-    skill_mapping = {
-        'js': 'JavaScript',
-        'JS': 'JavaScript',
-        # ... 其他技能映射 ...
-    }
-    return [skill_mapping.get(skill.lower(), skill) for skill in skills]
+# 1216引入，先處理技能命名格式化的議題(先擱置，後續問老師狀況，目前卡JOSNB的議題)
+# def normalize_skills(skills):
+#     skill_mapping = {
+#         'js': 'JavaScript',
+#         'JS': 'JavaScript',
+#         # ... 其他技能映射 ...
+#     }
+#     return [skill_mapping.get(skill.lower(), skill) for skill in skills]
 
 
 # feed的功能是把Dbworklist清空重來，然後檢索Dbworlist後套入schemas做轉換與響應
-# def db_feed(db: Session): 
-#     new_workList_list = [DbWorklist(
-#         school=worklist["school"],
-#         semester=worklist["semester"],
-#         workName=worklist["workName"],
-#         githubUrl=worklist["githubUrl"],
-#         websiteUrl=worklist["websiteUrl"],
-#         pptUrl=worklist["pptUrl"],
-#         imgUrl=worklist["imgUrl"],
-#         skill=worklist["skill"],
-#         name=worklist["name"]
-#     ) for worklist in WorkList]
-#     db.query(DbWorklist).delete()
-#     db.commit()
-#     db.execute(text("ALTER SEQUENCE worklist_id_seq RESTART WITH 1;"))
-#     db.commit()
-#     db.add_all(new_workList_list)
-#     db.commit()
-#     db_items = db.query(DbWorklist).all()
-#     return [WorkListResponseSchema.from_orm(item) for item in db_items] 
-
-
-# 測試中
-def db_feed(db: Session):
-    new_workList_list = []
-    for worklist in WorkList:
-        # 將技能格式化
-        formatted_skills = normalize_skills(worklist["skill"])
-        new_worklist = DbWorklist(
-            school=worklist["school"],
-            semester=worklist["semester"],
-            workName=worklist["workName"],
-            githubUrl=worklist["githubUrl"],
-            websiteUrl=worklist["websiteUrl"],
-            pptUrl=worklist["pptUrl"],
-            imgUrl=worklist["imgUrl"],
-            skill=formatted_skills,  # 使用格式化後的技能
-            name=worklist["name"]
-        )
-        new_workList_list.append(new_worklist)
+def db_feed(db: Session): 
+    new_workList_list = [DbWorklist(
+        school=worklist["school"],
+        semester=worklist["semester"],
+        workName=worklist["workName"],
+        githubUrl=worklist["githubUrl"],
+        websiteUrl=worklist["websiteUrl"],
+        pptUrl=worklist["pptUrl"],
+        imgUrl=worklist["imgUrl"],
+        skill=worklist["skill"],
+        name=worklist["name"]
+    ) for worklist in WorkList]
     db.query(DbWorklist).delete()
     db.commit()
     db.execute(text("ALTER SEQUENCE worklist_id_seq RESTART WITH 1;"))
@@ -70,12 +42,40 @@ def db_feed(db: Session):
     db.add_all(new_workList_list)
     db.commit()
     db_items = db.query(DbWorklist).all()
-    return [WorkListResponseSchema.from_orm(item) for item in db_items]
+    return [WorkListResponseSchema.from_orm(item) for item in db_items] 
+
+
+# 測試中(先擱置，後續問老師狀況，目前卡JOSNB的議題)
+# def db_feed(db: Session):
+#     new_workList_list = []
+#     for worklist in WorkList:
+#         # 將技能格式化
+#         formatted_skills = normalize_skills(worklist["skill"])
+#         new_worklist = DbWorklist(
+#             school=worklist["school"],
+#             semester=worklist["semester"],
+#             workName=worklist["workName"],
+#             githubUrl=worklist["githubUrl"],
+#             websiteUrl=worklist["websiteUrl"],
+#             pptUrl=worklist["pptUrl"],
+#             imgUrl=worklist["imgUrl"],
+#             skill=formatted_skills,  # 使用格式化後的技能
+#             name=worklist["name"]
+#         )
+#         new_workList_list.append(new_worklist)
+#     db.query(DbWorklist).delete()
+#     db.commit()
+#     db.execute(text("ALTER SEQUENCE worklist_id_seq RESTART WITH 1;"))
+#     db.commit()
+#     db.add_all(new_workList_list)
+#     db.commit()
+#     db_items = db.query(DbWorklist).all()
+#     return [WorkListResponseSchema.from_orm(item) for item in db_items]
 
 # create功能是請求數據庫創建新的紀錄，用來實現用戶新增單獨作品 的功能。
 def create(db: Session, request: WorkListRequestSchema):
-    #測試中
-    formatted_skills = normalize_skills(request.skill)
+    #測試中(先擱置，後續問老師狀況，目前卡JOSNB的議題)
+    # formatted_skills = normalize_skills(request.skill)
     new_worklist = DbWorklist(
         school=request.school,
         semester=request.semester,
@@ -84,7 +84,7 @@ def create(db: Session, request: WorkListRequestSchema):
         websiteUrl=request.websiteUrl,
         pptUrl=request.pptUrl,
         imgUrl=request.imgUrl,
-        skill=formatted_skills,
+        skill=request.skill,
         name=request.name
     )
     db.add(new_worklist)
@@ -174,20 +174,20 @@ def get_worklist_by_filter(filter: str, db: Session):
                             detail=f'worklist with filter = {filter} not found')
     return [WorkListResponseSchema.from_orm(item) for item in worklist]
 
-# 第二版，根據前端簡化篩選邏輯，引入技能格式化的處理。
-def get_worklist_by_skill(skill_filter: str, db: Session):
-    # 先對技能進行格式化
-    formatted_skills = normalize_skills([skill_filter])[0]
-    # 僅針對 JSONB 欄位的技能進行篩選
-    jsonb_contains_condition = DbWorklist.skill.contains([formatted_skills])
-    # 創建查詢
-    stmt = select(DbWorklist).where(jsonb_contains_condition)
-    # 執行查詢
-    worklist = db.execute(stmt).scalars().all()
-    # 處理無結果的情況
-    if not worklist:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail=f'No worklist found with skill = {skill_filter}')
-    # 返回結果
-    return [WorkListResponseSchema.from_orm(item) for item in worklist]
+# 第二版，根據前端簡化篩選邏輯，引入技能格式化的處理。(先擱置，後續問老師狀況，目前卡JOSNB的議題)
+# def get_worklist_by_skill(skill_filter: str, db: Session):
+#     # 先對技能進行格式化
+#     formatted_skills = normalize_skills([skill_filter])[0]
+#     # 僅針對 JSONB 欄位的技能進行篩選
+#     jsonb_contains_condition = DbWorklist.skill.contains([formatted_skills])
+#     # 創建查詢
+#     stmt = select(DbWorklist).where(jsonb_contains_condition)
+#     # 執行查詢
+#     worklist = db.execute(stmt).scalars().all()
+#     # 處理無結果的情況
+#     if not worklist:
+#         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+#                             detail=f'No worklist found with skill = {skill_filter}')
+#     # 返回結果
+#     return [WorkListResponseSchema.from_orm(item) for item in worklist]
 

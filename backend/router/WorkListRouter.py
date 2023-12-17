@@ -62,7 +62,7 @@ def get_worklist_by_filter(filter: str = "", db: Session = Depends(get_db)):
     return db_worklist.get_worklist_by_filter(filter, db)
 # 1217新增，當端點({prefix}/filter)被訪問時，會根據關鍵字做一個搜尋。可套入於全域資料的搜尋機制。
 
-@router.get('/skill_filter', response_model=List[WorkListResponseSchema])
-def get_worklist_by_skill(skill_filter: str = "", db: Session = Depends(get_db)):
-    return db_worklist.get_worklist_by_filter(skill_filter, db)
-# 1217新增，當端點({prefix}/skill_filter)被訪問時，會技能關鍵字篩選做一個條件判斷。可套入前端ANTD之select樣式。
+# @router.get('/skill_filter', response_model=List[WorkListResponseSchema])
+# def get_worklist_by_skill(skill_filter: str = "", db: Session = Depends(get_db)):
+#     return db_worklist.get_worklist_by_filter(skill_filter, db)
+# 1217新增，當端點({prefix}/skill_filter)被訪問時，會技能關鍵字篩選做一個條件判斷。可套入前端ANTD之select樣式。(先擱置，後續問老師狀況，目前卡JOSNB的議題)

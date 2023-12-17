@@ -9,6 +9,7 @@ COPY . .
 # 安裝依賴
 RUN pip install -r requirements.txt
 
-# 終端機指令
-EXPOSE 8000
-CMD [ "python", "app.py"]
+# 終端機指令。
+# 導入YML後註解掉
+# EXPOSE 8000
+# CMD [ "python", "app.py"]
