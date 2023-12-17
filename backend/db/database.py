@@ -12,7 +12,6 @@ from sqlalchemy.orm import sessionmaker
 #  有docker幫忙命名後，URL規則是://${{USER}}:${{PASSWORD}}@${{HOST}}:${{PORT}/${{database}}
 SQLALCHEMY_DATABASE_URL = "postgresql://cat:catisgood@postgre:5432/worklist"
 
-
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL, 
     # connect_args={"check_same_thread": False}  # 這對於 SQLite 是必要的，特別是在多線程環境中(GPT這樣說)
