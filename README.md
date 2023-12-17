@@ -8,9 +8,10 @@
 docker裡的python版本，使用python:3.12.1-slim
 然後端口因為本地卡一些其餘不知名議題，無法使用5000，改採8000
 要打開本地API，應用指令`docker run -p 8000:8000 react-vercel-be-practice-v3`
-
+相關筆記：https://western-skipjack-daa.notion.site/15-9c488993255a48b480be97b285f3cbd0?pvs=4
 ## 第二迭代，導入yml以及本地的postgresql伺服器
 使用終端指令：`docker compouse up`，就能開心管理跨容器的文件們了
-
+相關筆記：https://western-skipjack-daa.notion.site/15-9c488993255a48b480be97b285f3cbd0?pvs=4
 ## 第三迭代，製作全域搜尋以及技能篩選的功能
 主要是借鏡老師python/2023/wkd書寫的代碼，新增了ID歸零（非必要）、ID搜尋、全域搜尋、以及技能格式化與搜尋。
+相關筆記：https://western-skipjack-daa.notion.site/W14-492b62666ea04af2939c8a5ff90cc44a?pvs=4
